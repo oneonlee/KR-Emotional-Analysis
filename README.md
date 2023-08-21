@@ -64,11 +64,12 @@ pip install -r requirements.txt
 ## How to Run
 ### Train
 ```
-python -m run train \
+python3 -m run train \
     --output-dir outputs/ \
-    --seed 42 --epoch 10 \
-    --learning-rate 2e-5 --weight-decay 0.01 \
-    --batch-size 64 --valid-batch-size 64
+    --seed 42 --epoch 15 \
+    --learning-rate 4e-5 --weight-decay 0.01 \
+    --batch-size 128 --valid-batch-size 128 \
+    --gpu-num 0
 ```
 
 ### Inference
@@ -76,7 +77,7 @@ python -m run train \
 python -m run inference \
     --model-ckpt-path /workspace/Korean_EA_2023/outputs/<your-model-ckpt-path> \
     --output-path test_output.jsonl \
-    --batch-size 64 \
+    --batch-size 128 \
     --device cuda:0
 ```
 

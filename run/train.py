@@ -1,19 +1,12 @@
 
+import os
 import argparse
 import json
 import logging
-import os
 import sys
 
 import torch
 import numpy as np
-from transformers import (
-    AutoModelForSequenceClassification,
-    AutoTokenizer,
-    TrainingArguments,
-    Trainer,
-    EvalPrediction
-)
 from datasets import Dataset
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
 
@@ -32,8 +25,9 @@ g.add_argument("--epochs", type=int, default=10, help="the numnber of training e
 g.add_argument("--learning-rate", type=float, default=2e-4, help="max learning rate")
 g.add_argument("--weight-decay", type=float, default=0.01, help="weight decay")
 g.add_argument("--seed", type=int, default=42, help="random seed")
-
-
+g.add_argument("--gpu-num", type=int, default=0, help="gpu number for training")
+   
+    
 def main(args):
     logger = logging.getLogger("train")
     logger.propagate = False
@@ -50,12 +44,26 @@ def main(args):
     for k, v in vars(args).items():
         logger.info(f"{k:25}: {v}")
 
+    logger.info(f"[+] Use Device: {args.gpu_num}")
+    # Set environment variables for CUDA
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_num)
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    
     logger.info(f"[+] Set Random Seed to {args.seed}")
     np.random.seed(args.seed)
     os.environ["PYTHONHASHSEED"] = str(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)  # type: ignore
 
+    from transformers import (
+        AutoModelForSequenceClassification,
+        AutoTokenizer,
+        TrainingArguments,
+        Trainer,
+        EvalPrediction
+    )
+    
     logger.info(f'[+] Load Tokenizer"')
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
 
@@ -94,6 +102,7 @@ def main(args):
         id2label=id2label,
         label2id=label2id
     )
+    model.to(device)
 
     targs = TrainingArguments(
         output_dir=args.output_dir,
