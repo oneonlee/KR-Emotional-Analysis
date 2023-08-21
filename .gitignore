@@ -2,7 +2,6 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,jupyternotebooks,python
 
 ### Data ###
-
 resource/data/nikluge-ea-2023-train.jsonl
 resource/data/nikluge-ea-2023-dev.jsonl
 resource/data/nikluge-ea-2023-test.jsonl
@@ -39,8 +38,10 @@ ipython_config.py
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/
+run/__pycache__/
 *.py[cod]
 *$py.class
+outputs/runs/
 
 # C extensions
 *.so
