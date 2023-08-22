@@ -41,6 +41,7 @@ ipython_config.py
 # Byte-compiled / optimized / DLL files
 __pycache__/
 run/__pycache__/
+run/__pycache__/inference.cpython-38.pyc
 *.py[cod]
 *$py.class
 outputs/runs/
