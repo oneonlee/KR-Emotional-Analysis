@@ -1,6 +1,8 @@
 # Created by https://www.toptal.com/developers/gitignore/api/linux,jupyternotebooks,python
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,jupyternotebooks,python
 
+output*/
+
 ### Data ###
 resource/data/nikluge-ea-2023-train.jsonl
 resource/data/nikluge-ea-2023-dev.jsonl
