@@ -1,10 +1,13 @@
 # 한국어 텍스트 감정 분석 모델
-본 리포지토리는 2023 국립국어원 인공 지능 언어 능력 평가 중 감정 분석(Emotion Analysis) 모델 및 해당 모델의 재현을 위한 소스 코드를 포함하고 있습니다.
+본 리포지토리는 [2023 국립국어원 인공 지능 언어 능력 평가](https://corpus.korean.go.kr/taskOrdtm/taskList.do?taskOrdtmId=103) 중 [감정 분석(Emotional Analysis) 과제](https://corpus.korean.go.kr/taskOrdtm/taskList.do?taskOrdtmId=103)를 위한 모델 및 해당 모델의 재현을 위한 소스 코드를 포함하고 있습니다.
 
-### Baseline
-|Model|Micro-F1|
-|:---:|---|
-|klue/roberta-base|0.850|
+### Performance
+| Model              | Test Micro-F1 | Batch Size | Epochs | Learing Rate | Weight Decay |
+| :----------------- | :------------ | :--------- | :----- | :----------- | :----------- |
+| klue/roberta-large | 86.5736336    | 128        | 14     | 2e-5         | 0.1          |
+| klue/roberta-base  | 85.3803773    | 64         | 14     | 4e-5         | 0.1          |
+| klue/bert-base     | 84.7908872    | 64         | 5      | 2e-5         | 0.1          |
+
 
 ## Directory Structue
 ```
@@ -67,23 +70,24 @@ pip install -r requirements.txt
 ```
 python3 -m run train \
     --output-dir outputs/ \
-    --seed 42 --epoch 15 \
-    --learning-rate 4e-5 --weight-decay 0.01 \
-    --batch-size 128 --valid-batch-size 128 \
-	 --model-path klue/roberta-base --tokenizer klue/roberta-base \
+    --seed 42 --epoch 14 \
+    --learning-rate 2e-5 --weight-decay 0.1 \
+    --batch-size 64 --valid-batch-size 64 \
+	 --model-path klue/roberta-large --tokenizer klue/roberta-large \
     --gpu-num 0
 ```
 
 ### Inference
 ```
 python3 -m run inference \
-    --model-ckpt-path /workspace/Korean_EA_2023/outputs/<your-model-ckpt-path> \
+    --model-ckpt-path outputs/checkpoint-<XXXX> \
     --output-path test_output.jsonl \
-    --batch-size 128 \
+    --batch-size 64 \
     --device cuda:0
 ```
 
 ### Reference
+- teddysum/Korean_EA_2023 (https://github.com/teddysum/Korean_EA_2023)
 - 국립국어원 모두의말뭉치 (https://corpus.korean.go.kr/)  
 - transformers (https://github.com/huggingface/transformers)  
 - KLUE (https://github.com/KLUE-benchmark/KLUE)
