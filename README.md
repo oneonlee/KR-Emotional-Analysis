@@ -2,12 +2,18 @@
 본 리포지토리는 [2023 국립국어원 인공 지능 언어 능력 평가](https://corpus.korean.go.kr/taskOrdtm/taskList.do?taskOrdtmId=103) 중 [감정 분석(Emotional Analysis) 과제](https://corpus.korean.go.kr/taskOrdtm/taskList.do?taskOrdtmId=103)를 위한 모델 및 해당 모델의 재현을 위한 소스 코드를 포함하고 있습니다.
 
 ### Performance
-| Model              | Test Micro-F1 | Batch Size | Epochs | Learing Rate | Weight Decay |
-| :----------------- | :------------ | :--------- | :----- | :----------- | :----------- |
-| klue/roberta-large | 86.5736336    | 64         | 14     | 2e-5         | 0.1          |
-| klue/roberta-base  | 85.3803773    | 128        | 14     | 4e-5         | 0.1          |
-| klue/bert-base     | 84.7908872    | 128        | 5      | 2e-5         | 0.1          |
-
+| Model                      | Test Micro-F1 | Batch Size | Epochs | Learing Rate | Weight Decay | Removing "&others&" | Cleansing symobls |
+| :------------------------- | :------------ | :--------- | :----- | :----------- | :----------- | :------------------ | :---------------- |
+| beomi/KcELECTRA-base-v2022 | 87.2167629    | 64         | 14     | 2e-5         | 0.1          | True                | True              |
+| beomi/KcELECTRA-base-v2022 | 86.9470899    | 64         | 14     | 2e-5         | 0.1          | False               | True              |
+| klue/roberta-large         | 86.5736336    | 64         | 14     | 2e-5         | 0.1          | False               | False             |
+| klue/roberta-large         |               | 64         | 14     | 2e-5         | 0.1          | False               | True              |
+| klue/roberta-large         |               | 64         | 14     | 2e-5         | 0.1          | True                | True              |
+| klue/roberta-base          | 85.3803773    | 128        | 14     | 4e-5         | 0.1          | False               | False             |
+| klue/bert-base             | 84.7908872    | 128        | 5      | 2e-5         | 0.1          | False               | False             |
+| kykim/electra-kor-base     |               | 128        |        | 2e-5         | 0.1          | False               | False             |
+| kykim/funnel-kor-base      |               | 128        |        | 2e-5         | 0.1          | False               | False             |
+| kykim/bert-kor-base        |               | 128        |        | 2e-5         | 0.1          | False               | False             |
 
 ## Directory Structue
 ```
@@ -73,7 +79,8 @@ python3 -m run train \
     --seed 42 --epoch 14 \
     --learning-rate 2e-5 --weight-decay 0.1 \
     --batch-size 64 --valid-batch-size 64 \
-	 --model-path klue/roberta-large --tokenizer klue/roberta-large \
+    --model-path beomi/KcELECTRA-base-v2022 --tokenizer beomi/KcELECTRA-base-v2022 \
+    --removing-others yes --cleansing yes \
     --gpu-num 0
 ```
 
@@ -83,11 +90,14 @@ python3 -m run inference \
     --model-ckpt-path outputs/checkpoint-<XXXX> \
     --output-path test_output.jsonl \
     --batch-size 64 \
+    --removing-others yes --cleansing yes \
     --device cuda:0
 ```
 
 ### Reference
-- teddysum/Korean_EA_2023 (https://github.com/teddysum/Korean_EA_2023)
 - 국립국어원 모두의말뭉치 (https://corpus.korean.go.kr/)  
-- transformers (https://github.com/huggingface/transformers)  
-- KLUE (https://github.com/KLUE-benchmark/KLUE)
+- teddysum/Korean_EA_2023 (https://github.com/teddysum/Korean_EA_2023)
+- Beomi/KcELECTRA (https://github.com/Beomi/KcELECTRA)
+- KLUE-benchmark/KLUE (https://github.com/KLUE-benchmark/KLUE)
+- kiyoungkim1/LMkor (https://github.com/kiyoungkim1/LMkor)
+- huggingface/transformers (https://github.com/huggingface/transformers)  

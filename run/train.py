@@ -26,7 +26,9 @@ g.add_argument("--learning-rate", type=float, default=2e-4, help="max learning r
 g.add_argument("--weight-decay", type=float, default=0.01, help="weight decay")
 g.add_argument("--seed", type=int, default=42, help="random seed")
 g.add_argument("--gpu-num", type=int, default=0, help="gpu number for training")
-   
+g.add_argument("--cleansing", type=str, default="no", help="cleansing method for KcElectra")
+g.add_argument("--removing-others", type=str, default="no", help="removing '&others&'")
+    
     
 def main(args):
     logger = logging.getLogger("train")
@@ -77,15 +79,49 @@ def main(args):
     with open(os.path.join(args.output_dir, "label2id.json"), "w") as f:
         json.dump(label2id, f)
 
+    logger.info(f'[+] Text Cleansing : {args.cleansing}')
+    logger.info(f'[+] Removing "&others&" : {args.removing_others}')
+        
+    import re
+    import emoji
+    from soynlp.normalizer import repeat_normalize
+
+    pattern = re.compile(f'[^ .,?!/@$%~％·∼()\x00-\x7Fㄱ-ㅣ가-힣]+')
+    url_pattern = re.compile(
+        r'https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)')
+
+    def clean(x): 
+        x = pattern.sub(' ', x)
+        x = emoji.replace_emoji(x, replace='') # emoji 삭제
+        x = url_pattern.sub('', x)
+        x = x.strip()
+        x = repeat_normalize(x, num_repeats=2)
+        return x
+        
     def preprocess_data(examples):
         # take a batch of texts
         text1 = examples["input"]["form"]
         text2 = examples["input"]["target"]["form"]
+        
+        if args.removing_others == "yes":
+            if type(text1) is str:
+                text1 = text1.replace("&others&", "")
+            if type(text2) is str:
+                text2 = text2.replace("&others&", "")
+        if args.cleansing == "yes":
+            if type(text1) is str:
+                text1 = clean(text1)
+            if type(text2) is str:
+                text2 = clean(text2)
+            
         # encode them
         encoding = tokenizer(text1, text2, padding="max_length", truncation=True, max_length=args.max_seq_len)
+
         # add labels
         encoding["labels"] = [0.0] * len(labels)
         for key, idx in label2id.items():
+            if examples["output"]=='':
+                encoding["labels"][idx] = 0.0
             if examples["output"][key] == 'True':
                 encoding["labels"][idx] = 1.0
         
