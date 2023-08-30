@@ -4,9 +4,9 @@
 ### Performance
 | Model              | Test Micro-F1 | Batch Size | Epochs | Learing Rate | Weight Decay |
 | :----------------- | :------------ | :--------- | :----- | :----------- | :----------- |
-| klue/roberta-large | 86.5736336    | 128        | 14     | 2e-5         | 0.1          |
-| klue/roberta-base  | 85.3803773    | 64         | 14     | 4e-5         | 0.1          |
-| klue/bert-base     | 84.7908872    | 64         | 5      | 2e-5         | 0.1          |
+| klue/roberta-large | 86.5736336    | 64         | 14     | 2e-5         | 0.1          |
+| klue/roberta-base  | 85.3803773    | 128        | 14     | 4e-5         | 0.1          |
+| klue/bert-base     | 84.7908872    | 128        | 5      | 2e-5         | 0.1          |
 
 
 ## Directory Structue
