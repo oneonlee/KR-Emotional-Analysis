@@ -6,21 +6,20 @@
 | Model                                     | Test Micro-F1 | Batch Size | Epochs | Learing Rate | Weight Decay | Removing "&others&" | Cleansing symobls |
 | :---------------------------------------- | :------------ | :--------- | :----- | :----------- | :----------- | :------------------ | :---------------- |
 | beomi/KcELECTRA-base-v2022                | 87.2167629    | 64         | 14     | 2e-5         | 0.1          | True                | True              |
+| beomi/KcELECTRA-base-v2022                |               | 64         | 14     | 4e-5         | 0.1          | True                | True              |
 | beomi/KcELECTRA-base-v2022                | 86.9470899    | 64         | 14     | 2e-5         | 0.1          | False               | True              |
 | klue/roberta-large                        | 86.5736336    | 64         | 14     | 2e-5         | 0.1          | False               | False             |
 | klue/roberta-large                        | 86.4393056    | 64         | 14     | 2e-5         | 0.1          | False               | True              |
 | klue/roberta-large                        | 86.1970606    | 64         | 14     | 2e-5         | 0.1          | True                | True              |
-| klue/roberta-base                         | 85.3803773    | 128        | 14     | 4e-5         | 0.1          | False               | False             |
-| klue/bert-base                            | 84.7908872    | 128        | 5      | 2e-5         | 0.1          | False               | False             |
 | kykim/bert-kor-base                       | 85.8253457    | 128        | 4      | 2e-5         | 0.1          | False               | False             |
-| kykim/bert-kor-base                       |               | 128        | 13     | 2e-5         | 0.1          | True                | False             |
+| kykim/bert-kor-base                       |               | 128        | 13     | 2e-5         | 0.1          | True                | True              |
+| klue/roberta-base                         | 85.3803773    | 128        | 14     | 4e-5         | 0.1          | False               | False             |
 | kykim/funnel-kor-base                     | 85.3276541    | 128        | 10     | 2e-5         | 0.1          | False               | False             |
-| kykim/funnel-kor-base                     |               | 128        | 10     | 2e-5         | 0.1          | True                | False             |
+| kykim/funnel-kor-base                     |               | 128        | 10     | 2e-5         | 0.1          | True                | True              |
 | kykim/electra-kor-base                    | 85.0007948    | 128        | 14     | 2e-5         | 0.1          | False               | False             |
-| kykim/electra-kor-base                    |               | 128        | 6      | 2e-5         | 0.1          | True                | False             |
-| monologg/koelectra-base-v3-goemotions     |               |            |        |              |              |                     |                   |
-| monologg/kocharelectra-base-discriminator |               |            |        |              |              |                     |                   |
-| quantumaikr/KoreanLM                      |               |            |        |              |              |                     |                   |
+| kykim/electra-kor-base                    |               | 128        | 6      | 2e-5         | 0.1          | True                | True              |
+| klue/bert-base                            | 84.7908872    | 128        | 5      | 2e-5         | 0.1          | False               | False             |
+| monologg/koelectra-base-v3-goemotions     |               | 128        | 10     | 2e-5         | 0.1          | False               | False             |
 
 
 ## Directory Structue
