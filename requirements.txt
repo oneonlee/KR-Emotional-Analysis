@@ -2,3 +2,6 @@ torch==1.13.0.*
 transformers==4.31.0
 accelerate==0.21.0
 datasets==2.14.0
+numpy
+scikit-learn
+tqdm

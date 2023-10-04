@@ -4,8 +4,8 @@ import json
 import logging
 import os
 import sys
-from tqdm import tqdm
 
+from tqdm import tqdm
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser(prog="train", description="Inference Table to T
 parser.add_argument("--model-ckpt-path", type=str, help="model path")
 parser.add_argument("--output-path", type=str, required=True, help="output tsv file path")
 parser.add_argument("--batch-size", type=int, default=32, help="training batch size")
-parser.add_argument("--max-seq-len", type=int, default=512, help="summary max sequence length")
+parser.add_argument("--max-seq-len", type=int, default=128, help="summary max sequence length")
 parser.add_argument("--threshold", type=float, default=0.5, help="inferrence threshold")
 parser.add_argument("--num-beams", type=int, default=3, help="beam size")
 parser.add_argument("--device", type=str, default="cpu", help="inference device")
