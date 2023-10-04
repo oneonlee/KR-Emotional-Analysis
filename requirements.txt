@@ -3,5 +3,10 @@ transformers==4.31.0
 accelerate==0.21.0
 datasets==2.14.0
 numpy
+pandas
+seaborn
+matplotlib
 scikit-learn
+emoji
+soynlp
 tqdm
