@@ -5,8 +5,8 @@
 
 | Model                                     | Test Micro-F1 | Batch Size | Epochs | Learing Rate | Weight Decay | Removing "&others&" | Cleansing symobls |
 | :---------------------------------------- | :------------ | :--------- | :----- | :----------- | :----------- | :------------------ | :---------------- |
+| beomi/KcELECTRA-base-v2022                | 87.9478512    | 128        | 98     | 4e-5         | 0.1          | True                | True              |
 | beomi/KcELECTRA-base-v2022                | 87.7295831    | 64         | 14     | 4e-5         | 0.1          | True                | True              |
-| beomi/KcELECTRA-base-v2022                |               | 64         | 13     | 4e-5         | 0.1          | True                | True              |
 | beomi/KcELECTRA-base-v2022                | 87.2167629    | 64         | 14     | 2e-5         | 0.1          | True                | True              |
 | beomi/KcELECTRA-base-v2022                | 86.9470899    | 64         | 14     | 2e-5         | 0.1          | False               | True              |
 | klue/roberta-large                        | 86.5736336    | 64         | 14     | 2e-5         | 0.1          | False               | False             |
