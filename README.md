@@ -1,7 +1,15 @@
 # 한국어 텍스트 감정 분석 모델
 본 리포지토리는 [2023 국립국어원 인공 지능 언어 능력 평가](https://corpus.korean.go.kr/taskOrdtm/taskList.do?taskOrdtmId=103) 중 [감정 분석(Emotional Analysis) 과제](https://corpus.korean.go.kr/taskOrdtm/taskList.do?taskOrdtmId=103)를 위한 모델 및 해당 모델의 재현을 위한 소스 코드를 포함하고 있습니다.
 
-### Performance
+## To-Do
+1. testset 활용 post-training
+2. target 정보 활용
+3. K-Fold Cross Validation
+4. 모델 앙상블 (Hard Voting)
+5. 라벨 스무딩
+6. 광범위한 하이퍼파라미터 튜닝
+
+## Performance
 
 | Model                                     | Test Micro-F1 | Batch Size | Epochs | Learing Rate | Weight Decay | Removing "&others&" | Cleansing symobls |
 | :---------------------------------------- | :------------ | :--------- | :----- | :----------- | :----------- | :------------------ | :---------------- |
@@ -83,7 +91,7 @@ pip install -r requirements.txt
 ### Train
 ```
 python3 -m run train \
-    --output-dir outputs/ \
+    --output-dir outputs/beomi-KcELECTRA-base-v2022/e14_2-5_64/ \
     --seed 42 --epoch 14 \
     --learning-rate 2e-5 --weight-decay 0.1 \
     --batch-size 64 --valid-batch-size 64 \
@@ -95,8 +103,8 @@ python3 -m run train \
 ### Inference
 ```
 python3 -m run inference \
-    --model-ckpt-path outputs/checkpoint-<XXXX> \
-    --output-path test_output.jsonl \
+    --model-ckpt-path outputs/beomi-KcELECTRA-base-v2022/e14_2-5_64/checkpoint-XXXX \
+    --output-path outputs/beomi-KcELECTRA-base-v2022/e14_2-5_64/test_output.jsonl \
     --batch-size 64 \
     --removing-others yes --cleansing yes \
     --device cuda:0
