@@ -6,6 +6,7 @@ import sys
 
 import torch
 from torch import nn
+from torch.nn import functional as F
 from torch import Tensor
 from typing import Optional, Sequence
 
@@ -32,7 +33,7 @@ g.add_argument("--seed", type=int, default=42, help="random seed")
 g.add_argument("--gpu-num", type=int, default=0, help="gpu number for training")
 g.add_argument("--cleansing", type=str, default="no", help="cleansing method for KcElectra")
 g.add_argument("--removing-others", type=str, default="no", help="removing '&others&'")
-g.add_argument("--num-folds", type=int, default=5, help="number of folds for K-Fold Cross Validation")
+g.add_argument("--num-folds", type=int, default=10, help="number of folds for K-Fold Cross Validation")
     
 def main(args):
     logger = logging.getLogger("train")
@@ -69,7 +70,7 @@ def main(args):
         EvalPrediction,
         EarlyStoppingCallback
     )
-
+    
     # Define trainer
     class CustomTrainer(Trainer):
         def __init__(self, *args, **kwargs):
@@ -78,40 +79,54 @@ def main(args):
         def compute_loss(self, model, inputs, return_outputs=False):
             # forward pass
             labels = inputs.pop("labels").to(torch.int64)
-
-            joy_logit, anticipation_logit, trust_logit, surprise_logit, disgust_logit, fear_logit, anger_logit, sadness_logit = model(**inputs)
-
-            # focal loss
+            outputs = model(**inputs) # outputs[0]은 logits tensor입니다.
+            logits = outputs[0] # torch.Size([B, 8])
+            
+            # joy_logit = logits[:, 0] # torch.Size([B])
+            # anticipation_logit = logits[:, 1]
+            # trust_logit = logits[:, 2]
+            # surprise_logit = logits[:, 3]
+            # disgust_logit = logits[:, 4]
+            # fear_logit = logits[:, 5]
+            # anger_logit = logits[:, 6]
+            # sadness_logit = logits[:, 7]
+    
+            # ASLSingleLabel loss
             criterion = {
-                'joy' : FocalLoss().to(device),
-                'anticipation' : FocalLoss().to(device),
-                'trust' : FocalLoss().to(device),
-                'surprise' : FocalLoss().to(device),
-                'disgust' : FocalLoss().to(device),
-                'fear' : FocalLoss().to(device),
-                'anger' : FocalLoss().to(device),
-                'sadness' : FocalLoss().to(device),
+                'joy' : ASLSingleLabel().to(device),
+                'anticipation' : ASLSingleLabel().to(device),
+                'trust' : ASLSingleLabel().to(device),
+                'surprise' : ASLSingleLabel().to(device),
+                'disgust' : ASLSingleLabel().to(device),
+                'fear' : ASLSingleLabel().to(device),
+                'anger' : ASLSingleLabel().to(device),
+                'sadness' : ASLSingleLabel().to(device),
             }
-            # labels = labels.type(torch.float).clone().detach()
-            loss = criterion['joy'](type_logit, labels[::, 0]) + \
-                    criterion['anticipation'](type_logit, labels[::, 1]) + \
-                    criterion['trust'](type_logit, labels[::, 2]) + \
-                    criterion['surprise'](type_logit, labels[::, 3]) + \
-                    criterion['disgust'](type_logit, labels[::, 4]) + \
-                    criterion['fear'](type_logit, labels[::, 5]) + \
-                    criterion['anger'](type_logit, labels[::, 6]) + \
-                    criterion['sadness'](type_logit, labels[::, 7])
-
+            
+            loss = criterion['joy'](logits, labels[:, 0]) + \
+                        criterion['anticipation'](logits, labels[:, 1]) + \
+                        criterion['trust'](logits, labels[:, 2]) + \
+                        criterion['surprise'](logits, labels[:, 3]) + \
+                        criterion['disgust'](logits, labels[:, 4]) + \
+                        criterion['fear'](logits, labels[:, 5]) + \
+                        criterion['anger'](logits, labels[:, 6]) + \
+                        criterion['sadness'](logits, labels[:, 7])
+            
+            
+            # preds = F.softmax(logits, dim=0) # torch.Size([B, 8])
+            # preds_binary = torch.where(preds >= 0.5, torch.tensor(1), torch.tensor(0)) # torch.Size([256, 8])
+            
             outputs = None, \
-                        torch.argmax(joy_logit, dim = 1), \
-                        torch.argmax(anticipation_logit, dim = 1), \
-                        torch.argmax(trust_logit, dim = 1), \
-                        torch.argmax(surprise_logit, dim = 1), \
-                        torch.argmax(disgust_logit, dim = 1), \
-                        torch.argmax(fear_logit, dim = 1), \
-                        torch.argmax(anger_logit, dim = 1), \
-                        torch.argmax(sadness_logit, dim = 1)
-
+                        logits
+                        # logits[:, 0], \
+                        # logits[:, 1], \
+                        # logits[:, 2], \
+                        # logits[:, 3], \
+                        # logits[:, 4], \
+                        # logits[:, 5], \
+                        # logits[:, 6], \
+                        # logits[:, 7]
+            
             return (loss, outputs) if return_outputs else loss
             
     logger.info(f'[+] Load Tokenizer"')
@@ -119,7 +134,6 @@ def main(args):
 
     logger.info(f'[+] Load Dataset')
     dataset = Dataset.from_json("resource/data/nikluge-ea-2023-train+dev.jsonl")
-    
     labels = list(dataset["output"][0].keys())
     id2label = {idx:label for idx, label in enumerate(labels)}
     label2id = {label:idx for idx, label in enumerate(labels)}
@@ -236,147 +250,90 @@ def main(args):
 
         def compute_metrics(p: EvalPrediction):
             preds = p.predictions[0] if isinstance(p.predictions, tuple) else p.predictions
+            # print(preds)
+            # print(preds.shape) # (4269, 8)
+            # print(p.label_ids)
+            # print(p.label_ids.shape) # (4269, 8)
             result = multi_label_metrics(predictions=preds, labels=p.label_ids)
             return result
 
-        # trainer = Trainer(
-        #     model,
-        #     targs,
-        #     train_dataset=encoded_tds,
-        #     eval_dataset=encoded_vds,
+
+        # trainer = CustomTrainer(
+        #     model=model,
+        #     args=targs,
+        #     train_dataset=encoded_tds, # 학습데이터
+        #     eval_dataset=encoded_vds,  # validation 데이터
+        #     compute_metrics=compute_metrics, # 모델 평가 방식
         #     tokenizer=tokenizer,
-        #     compute_metrics=compute_metrics
+        #     callbacks=[EarlyStoppingCallback(early_stopping_patience=args.patience)],
         # )
-        trainer = CustomTrainer(
-            model=model,
-            args=targs,
-            train_dataset=encoded_tds, # 학습데이터
-            eval_dataset=encoded_vds,  # validation 데이터
-            compute_metrics=compute_metrics, # 모델 평가 방식
+        
+        trainer = Trainer(
+            model,
+            targs,
+            train_dataset=encoded_tds,
+            eval_dataset=encoded_vds,
             tokenizer=tokenizer,
+            compute_metrics=compute_metrics,
             callbacks=[EarlyStoppingCallback(early_stopping_patience=args.patience)],
         )
         
         trainer.train()
+        
+        with open(os.path.join(os.path.join(args.output_dir, f"fold_{fold}"), "label2id.json"), "w") as f:
+            json.dump(label2id, f)
 # end main
 
-class FocalLoss(nn.Module):
-    """ Focal Loss, as described in https://arxiv.org/abs/1708.02002.
-    It is essentially an enhancement to cross entropy loss and is
-    useful for classification tasks when there is a large class imbalance.
-    x is expected to contain raw, unnormalized scores for each class.
-    y is expected to contain class labels.
-    Shape:
-        - x: (batch_size, C) or (batch_size, C, d1, d2, ..., dK), K > 0.
-        - y: (batch_size,) or (batch_size, d1, d2, ..., dK), K > 0.
-    """
+    
+# Reference: https://github.com/Alibaba-MIIL/ASL/blob/8c9e0bd8d5d450cf19093363fc08aa7244ad4408/src/loss_functions/losses.py#L107
+class ASLSingleLabel(nn.Module):
+    '''
+    This loss is intended for single-label classification problems
+    '''
+    def __init__(self, gamma_pos=0, gamma_neg=4, eps: float = 0.1, reduction='mean'):
+        super(ASLSingleLabel, self).__init__()
 
-    def __init__(self,
-                 alpha: Optional[Tensor] = None,
-                 gamma: float = 0.,
-                 reduction: str = 'mean',
-                 ignore_index: int = -100):
-        """Constructor.
-        Args:
-            alpha (Tensor, optional): Weights for each class. Defaults to None.
-            gamma (float, optional): A constant, as described in the paper.
-                Defaults to 0.
-            reduction (str, optional): 'mean', 'sum' or 'none'.
-                Defaults to 'mean'.
-            ignore_index (int, optional): class label to ignore.
-                Defaults to -100.
-        """
-        if reduction not in ('mean', 'sum', 'none'):
-            raise ValueError(
-                'Reduction must be one of: "mean", "sum", "none".')
-
-        super().__init__()
-        self.alpha = alpha
-        self.gamma = gamma
-        self.ignore_index = ignore_index
+        self.eps = eps
+        self.logsoftmax = nn.LogSoftmax(dim=-1)
+        self.targets_classes = []
+        self.gamma_pos = gamma_pos
+        self.gamma_neg = gamma_neg
         self.reduction = reduction
 
-        self.nll_loss = nn.NLLLoss(
-            weight=alpha, reduction='none', ignore_index=ignore_index)
+    def forward(self, inputs, target):
+        '''
+        "input" dimensions: - (batch_size,number_classes)
+        "target" dimensions: - (batch_size)
+        '''
+        
+        num_classes = inputs.size()[-1]
+        
+        log_preds = self.logsoftmax(inputs)
+        self.targets_classes = torch.zeros_like(inputs).scatter_(1, target.long().unsqueeze(1), 1)
 
-    def __repr__(self):
-        arg_keys = ['alpha', 'gamma', 'ignore_index', 'reduction']
-        arg_vals = [self.__dict__[k] for k in arg_keys]
-        arg_strs = [f'{k}={v!r}' for k, v in zip(arg_keys, arg_vals)]
-        arg_str = ', '.join(arg_strs)
-        return f'{type(self).__name__}({arg_str})'
+        # ASL weights
+        targets = self.targets_classes
+        anti_targets = 1 - targets
+        xs_pos = torch.exp(log_preds)
+        xs_neg = 1 - xs_pos
+        xs_pos = xs_pos * targets
+        xs_neg = xs_neg * anti_targets
+        asymmetric_w = torch.pow(1 - xs_pos - xs_neg,
+                                 self.gamma_pos * targets + self.gamma_neg * anti_targets)
+        log_preds = log_preds * asymmetric_w
 
-    def forward(self, x: Tensor, y: Tensor) -> Tensor:
-        if x.ndim > 2:
-            # (N, C, d1, d2, ..., dK) --> (N * d1 * ... * dK, C)
-            c = x.shape[1]
-            x = x.permute(0, *range(2, x.ndim), 1).reshape(-1, c)
-            # (N, d1, d2, ..., dK) --> (N * d1 * ... * dK,)
-            y = y.view(-1)
+        if self.eps > 0:  # label smoothing
+            self.targets_classes = self.targets_classes.mul(1 - self.eps).add(self.eps / num_classes)
 
-        unignored_mask = y != self.ignore_index
-        y = y[unignored_mask]
-        if len(y) == 0:
-            return torch.tensor(0.)
-        x = x[unignored_mask]
+        # loss calculation
+        loss = - self.targets_classes.mul(log_preds)
 
-        # compute weighted cross entropy term: -alpha * log(pt)
-        # (alpha is already part of self.nll_loss)
-        log_p = F.log_softmax(x, dim=-1)
-        ce = self.nll_loss(log_p, y)
-
-        # get true class column from each row
-        all_rows = torch.arange(len(x))
-        log_pt = log_p[all_rows, y]
-
-        # compute focal term: (1 - pt)^gamma
-        pt = log_pt.exp()
-        focal_term = (1 - pt)**self.gamma
-
-        # the full loss: -alpha * ((1 - pt)^gamma) * log(pt)
-        loss = focal_term * ce
-
+        loss = loss.sum(dim=-1)
         if self.reduction == 'mean':
             loss = loss.mean()
-        elif self.reduction == 'sum':
-            loss = loss.sum()
 
         return loss
 
 
-def focal_loss(alpha: Optional[Sequence] = None,
-               gamma: float = 0.,
-               reduction: str = 'mean',
-               ignore_index: int = -100,
-               device='cpu',
-               dtype=torch.float32) -> FocalLoss:
-    """Factory function for FocalLoss.
-    Args:
-        alpha (Sequence, optional): Weights for each class. Will be converted
-            to a Tensor if not None. Defaults to None.
-        gamma (float, optional): A constant, as described in the paper.
-            Defaults to 0.
-        reduction (str, optional): 'mean', 'sum' or 'none'.
-            Defaults to 'mean'.
-        ignore_index (int, optional): class label to ignore.
-            Defaults to -100.
-        device (str, optional): Device to move alpha to. Defaults to 'cpu'.
-        dtype (torch.dtype, optional): dtype to cast alpha to.
-            Defaults to torch.float32.
-    Returns:
-        A FocalLoss object
-    """
-    if alpha is not None:
-        if not isinstance(alpha, Tensor):
-            alpha = torch.tensor(alpha)
-        alpha = alpha.to(device=device, dtype=dtype)
-
-    fl = FocalLoss(
-        alpha=alpha,
-        gamma=gamma,
-        reduction=reduction,
-        ignore_index=ignore_index)
-    return fl
-                   
 if __name__ == "__main__":
     exit(main(parser.parse_args()))
