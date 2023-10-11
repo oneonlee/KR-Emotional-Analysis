@@ -153,7 +153,7 @@ def main(args):
 
     def clean(x): 
         x = pattern.sub(' ', x)
-        x = emoji.replace_emoji(x, replace='') # emoji 삭제
+        # x = emoji.replace_emoji(x, replace='') # emoji 삭제
         x = url_pattern.sub('', x)
         x = x.strip()
         x = repeat_normalize(x, num_repeats=2)
