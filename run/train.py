@@ -6,6 +6,7 @@ import sys
 
 import torch
 from torch import nn
+from torch.nn import BCEWithLogitsLoss
 from torch.nn import functional as F
 from torch import Tensor
 from typing import Optional, Sequence
@@ -70,6 +71,63 @@ def main(args):
         EvalPrediction,
         EarlyStoppingCallback
     )
+
+#     class ASLLoss(nn.Module):
+#         def __init__(self, gamma_positive=0, gamma_negative=4, eps: float = 0.1):
+#             super(ASLLoss, self).__init__()
+
+#             self.gamma_positive = gamma_positive
+#             self.gamma_negative = gamma_negative
+#             self.eps = eps
+
+#         def forward(self, inputs, target):
+#             """Computes the Asymmetric Loss between `inputs` and `target`"""
+
+#             positive = (target * (1 - (inputs+self.eps).clamp(max=1)).pow(self.gamma_positive))
+#             negative = ((1 - target) * (inputs+self.eps).pow(self.gamma_negative))
+
+#             loss = -(positive + negative).log().mean()
+
+#             return loss
+
+    class ASLLoss(nn.Module):
+        def __init__(self, gamma_pos=0, gamma_neg=4, eps: float = 0.1):
+            super(ASLLoss, self).__init__()
+
+            self.gamma_pos = gamma_pos
+            self.gamma_neg = gamma_neg
+            self.eps = eps
+
+        def forward(self, inputs, target):
+            """inputs : N * C,
+               target : N * C"""
+
+            logit = torch.sigmoid(inputs)
+
+            pos_part = target * ((1 - logit) ** self.gamma_pos) * torch.log(logit + self.eps)
+            neg_part = (1 - target) * ((logit) ** self.gamma_neg) * torch.log(1 - logit + self.eps)
+
+            return -(torch.sum(pos_part + neg_part)) / inputs.size()[0]
+
+
+    class FocalLoss(BCEWithLogitsLoss):
+        def __init__(self, gamma=2.0, alpha=0.25, pos_weight=None, reduction='mean'):
+            super().__init__(pos_weight=pos_weight, reduction=reduction)
+            self.gamma = gamma
+            self.alpha = alpha
+
+        def forward(self, input_, target):
+            BCE_loss = super().forward(input_, target)
+            pt = torch.exp(-BCE_loss)
+            F_loss = self.alpha * (1-pt)**self.gamma * BCE_loss
+
+            if self.reduction == 'mean':
+                return torch.mean(F_loss)
+            elif self.reduction == 'sum':
+                return torch.sum(F_loss)
+            else:
+                return F_loss
+
     
     # Define trainer
     class CustomTrainer(Trainer):
@@ -77,57 +135,68 @@ def main(args):
             super().__init__(*args, **kwargs)
 
         def compute_loss(self, model, inputs, return_outputs=False):
-            # forward pass
-            labels = inputs.pop("labels").to(torch.int64)
-            outputs = model(**inputs) # outputs[0]은 logits tensor입니다.
-            logits = outputs[0] # torch.Size([B, 8])
-            
-            # joy_logit = logits[:, 0] # torch.Size([B])
-            # anticipation_logit = logits[:, 1]
-            # trust_logit = logits[:, 2]
-            # surprise_logit = logits[:, 3]
-            # disgust_logit = logits[:, 4]
-            # fear_logit = logits[:, 5]
-            # anger_logit = logits[:, 6]
-            # sadness_logit = logits[:, 7]
-    
-            # ASLSingleLabel loss
-            criterion = {
-                'joy' : ASLSingleLabel().to(device),
-                'anticipation' : ASLSingleLabel().to(device),
-                'trust' : ASLSingleLabel().to(device),
-                'surprise' : ASLSingleLabel().to(device),
-                'disgust' : ASLSingleLabel().to(device),
-                'fear' : ASLSingleLabel().to(device),
-                'anger' : ASLSingleLabel().to(device),
-                'sadness' : ASLSingleLabel().to(device),
-            }
-            
-            loss = criterion['joy'](logits, labels[:, 0]) + \
-                        criterion['anticipation'](logits, labels[:, 1]) + \
-                        criterion['trust'](logits, labels[:, 2]) + \
-                        criterion['surprise'](logits, labels[:, 3]) + \
-                        criterion['disgust'](logits, labels[:, 4]) + \
-                        criterion['fear'](logits, labels[:, 5]) + \
-                        criterion['anger'](logits, labels[:, 6]) + \
-                        criterion['sadness'](logits, labels[:, 7])
-            
-            
-            # preds = F.softmax(logits, dim=0) # torch.Size([B, 8])
-            # preds_binary = torch.where(preds >= 0.5, torch.tensor(1), torch.tensor(0)) # torch.Size([256, 8])
-            
-            outputs = None, \
-                        logits
-                        # logits[:, 0], \
-                        # logits[:, 1], \
-                        # logits[:, 2], \
-                        # logits[:, 3], \
-                        # logits[:, 4], \
-                        # logits[:, 5], \
-                        # logits[:, 6], \
-                        # logits[:, 7]
-            
-            return (loss, outputs) if return_outputs else loss
+            labels = inputs.pop("labels")
+            outputs = model(**inputs)
+            logits = outputs.logits
+
+            loss_fct = FocalLoss(reduction='sum')
+
+            if len(labels.shape) > 1: # multi-label case
+                # print(logits.shape) # torch.Size([Batch, num_class])
+                # print(logits.view(-1).shape) # torch.Size([Batch * num_class])
+                # print(labels.shape) # torch.Size([Batch, num_class])
+                # print(labels.view(-1).shape) # torch.Size([Batch * num_class])
+                loss = loss_fct(logits.view(-1), labels.float().view(-1))
+                
+            else: # single-label case
+                loss = loss_fct(logits.view(-1), labels.long().view(-1))
+
+            return (loss, outputs) if return_outputs else loss 
+
+
+    class ASLCustomTrainer(Trainer):
+        def __init__(self, model=None, args=None,
+                     train_dataset=None,
+                     eval_dataset=None,
+                     compute_metrics=None,
+                     tokenizer=None,
+                     asl_loss_config={"gamma_pos": 0,"gamma_neg": 4,"eps": 0.1},
+                     **kwargs):
+
+            super().__init__(model=model,args=args,
+                              train_dataset=train_dataset,
+                              eval_dataset=eval_dataset,
+                              compute_metrics=compute_metrics,
+                              tokenizer=tokenizer,**kwargs)
+
+            # Instantiate the loss function 
+            # self.asl_loss_fn = ASLLoss(**asl_loss_config)
+            self.loss_fct = ASLLoss(**asl_loss_config)
+                
+
+#         def compute_loss(self,model:nn.Module,batch, return_outputs=False):
+
+#             labels=batch['labels']
+#             inputs={key:val.reshape(val.shape[0],-1) for key,val in batch.items() if key != 'labels'}
+
+#             outputs=model(**inputs)
+
+#             logits=outputs.logits
+
+#             # Compute the Asymmetric Loss between logits and labels
+#             loss=self.asl_loss_fn(logits.float(),labels.float())
+
+#             return (loss, outputs) if return_outputs else loss 
+
+        def compute_loss(self, model, inputs, return_outputs=False):
+            labels = inputs.pop("labels")
+            outputs = model(**inputs)
+            logits = outputs.logits
+
+            loss = self.loss_fct(logits.view(-1), labels.float().view(-1))
+
+            return (loss, outputs) if return_outputs else loss 
+        
             
     logger.info(f'[+] Load Tokenizer"')
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
@@ -258,25 +327,26 @@ def main(args):
             return result
 
 
+        trainer = ASLCustomTrainer(
         # trainer = CustomTrainer(
-        #     model=model,
-        #     args=targs,
-        #     train_dataset=encoded_tds, # 학습데이터
-        #     eval_dataset=encoded_vds,  # validation 데이터
-        #     compute_metrics=compute_metrics, # 모델 평가 방식
-        #     tokenizer=tokenizer,
-        #     callbacks=[EarlyStoppingCallback(early_stopping_patience=args.patience)],
-        # )
-        
-        trainer = Trainer(
-            model,
-            targs,
-            train_dataset=encoded_tds,
-            eval_dataset=encoded_vds,
+            model=model,
+            args=targs,
+            train_dataset=encoded_tds, # 학습데이터
+            eval_dataset=encoded_vds,  # validation 데이터
+            compute_metrics=compute_metrics, # 모델 평가 방식
             tokenizer=tokenizer,
-            compute_metrics=compute_metrics,
             callbacks=[EarlyStoppingCallback(early_stopping_patience=args.patience)],
         )
+        
+        # trainer = Trainer(
+        #     model,
+        #     targs,
+        #     train_dataset=encoded_tds,
+        #     eval_dataset=encoded_vds,
+        #     tokenizer=tokenizer,
+        #     compute_metrics=compute_metrics,
+        #     callbacks=[EarlyStoppingCallback(early_stopping_patience=args.patience)],
+        # )
         
         trainer.train()
         

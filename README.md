@@ -103,26 +103,95 @@ pip install -r requirements.txt
 
 ## How to Run
 ### Train
+
 ```
 python3 -m run train \
-    --output-dir outputs/beomi-KcELECTRA-base-v2022/focal-loss_patience3_lr4-5_b128/ \
-    --seed 42 --epoch 100 --patience 3 \
-    --learning-rate 4e-5 --weight-decay 0.1 \
-    --batch-size 128 --valid-batch-size 128 \
-    --model-path beomi/KcELECTRA-base-v2022 --tokenizer beomi/KcELECTRA-base-v2022 \
+    --output-dir outputs/test/10folds_patience7_lr2-5_b64 \
+    --seed 42 --epoch 100 --patience 7 --num-folds 10 \
+    --learning-rate 2e-5 --weight-decay 0.1 \
+    --max-seq-len 200 \
+    --batch-size 64 --valid-batch-size 64 \
+    --model-path beomi/KcELECTRA-base-v2022 \
+    --tokenizer beomi/KcELECTRA-base-v2022 \
+    --removing-others yes --cleansing yes \
+    --gpu-num 5
+```
+```
+python3 -m run train-ASL \
+    --output-dir outputs/test-ASL/10folds_patience5_lr2-5_b64 \
+    --seed 42 --epoch 100 --patience 5 --num-folds 10 \
+    --learning-rate 2e-5 --weight-decay 0.1 \
+    --max-seq-len 200 \
+    --batch-size 64 --valid-batch-size 64 \
+    --model-path beomi/KcELECTRA-base-v2022 \
+    --tokenizer beomi/KcELECTRA-base-v2022 \
     --removing-others yes --cleansing yes \
     --gpu-num 1
+```
+```
+python3 -m run train-ASL2 \
+    --output-dir outputs/test-ASL2/10folds_patience5_lr2-5_b64 \
+    --seed 42 --epoch 100 --patience 5 --num-folds 10 \
+    --learning-rate 2e-5 --weight-decay 0.1 \
+    --max-seq-len 200 \
+    --batch-size 64 --valid-batch-size 64 \
+    --model-path beomi/KcELECTRA-base-v2022 \
+    --tokenizer beomi/KcELECTRA-base-v2022 \
+    --removing-others yes --cleansing yes \
+    --gpu-num 4
 ```
 
 ### Inference
 ```
 python3 -m run inference \
-    --model-ckpt-path outputs/beomi-KcELECTRA-base-v2022/focal-loss_e14_4-5_128/checkpoint-XXXX \
-    --output-path outputs/beomi-KcELECTRA-base-v2022/focal-loss_e14_4-5_128/test_output.jsonl \
+    --model-ckpt-path outputs/beomi-KcELECTRA-base-v2022/10folds_patience5_lr2-5_b64/fold_9/checkpoint-3606 \
+    --output-path outputs/beomi-KcELECTRA-base-v2022/10folds_patience5_lr2-5_b64/fold_9-test_output.jsonl \
+    --max-seq-len 200 \
     --batch-size 128 \
     --removing-others yes --cleansing yes \
     --device cuda:0
 ```
+
+```
+python3 -m run inference \
+    --model-ckpt-path outputs/test/10folds_patience5_lr2-5_b64/fold_9/checkpoint-9616 \
+    --output-path outputs/test/10folds_patience5_lr2-5_b64/fold_9-test_output.jsonl \
+    --max-seq-len 200 \
+    --batch-size 128 \
+    --removing-others yes --cleansing yes \
+    --device cuda:0
+```
+
+```
+python3 -m run inference \
+    --model-ckpt-path outputs/test-ASL/10folds_patience5_lr2-5_b64/fold_6/checkpoint-7212 \
+    --output-path outputs/test-ASL/10folds_patience5_lr2-5_b64/fold_6-test_output.jsonl \
+    --max-seq-len 200 \
+    --batch-size 128 \
+    --removing-others yes --cleansing yes \
+    --device cuda:1
+```
+
+```
+python3 -m run inference \
+    --model-ckpt-path outputs/test/10folds_patience7_lr2-5_b64/fold_9/checkpoint-9015 \
+    --output-path outputs/test/10folds_patience7_lr2-5_b64/fold_9-test_output.jsonl \
+    --max-seq-len 200 \
+    --batch-size 128 \
+    --removing-others yes --cleansing yes \
+    --device cuda:0
+```
+
+```
+python3 -m run inference \
+    --model-ckpt-path outputs/test-ASL2/10folds_patience5_lr2-5_b64/fold_9/checkpoint-13222 \
+    --output-path outputs/test-ASL2/10folds_patience5_lr2-5_b64/fold_9-test_output.jsonl \
+    --max-seq-len 200 \
+    --batch-size 128 \
+    --removing-others yes --cleansing yes \
+    --device cuda:0
+```
+
 
 ## Reference
 - 국립국어원 모두의말뭉치 (https://corpus.korean.go.kr/)  
