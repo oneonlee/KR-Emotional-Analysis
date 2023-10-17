@@ -14,8 +14,7 @@ from typing import Optional, Sequence
 import numpy as np
 from datasets import Dataset
 from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
-from sklearn.model_selection import StratifiedKFold
-from sklearn.model_selection import KFold
+from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
 parser = argparse.ArgumentParser(prog="train", description="Train Table to Text with BART")
 
 g = parser.add_argument_group("Common Parameter")
@@ -33,9 +32,21 @@ g.add_argument("--weight-decay", type=float, default=0.01, help="weight decay")
 g.add_argument("--seed", type=int, default=42, help="random seed")
 g.add_argument("--gpu-num", type=int, default=0, help="gpu number for training")
 g.add_argument("--cleansing", type=str, default="no", help="cleansing method for KcElectra")
+g.add_argument("--removing-symbol", type=str, default="no", help="cleansing method for KcElectra")
+g.add_argument("--removing-emoji", type=str, default="no", help="cleansing method for KcElectra")
 g.add_argument("--removing-others", type=str, default="no", help="removing '&others&'")
 g.add_argument("--num-folds", type=int, default=10, help="number of folds for K-Fold Cross Validation")
-    
+
+def save_dataset_to_jsonl(dataset, file_path):
+    with open(file_path, 'w', encoding='utf-8') as f:
+        for example in dataset:
+            # 데이터 포맷을 정의하고 example을 이에 맞게 변환
+            data_to_save = {
+                "input": example["input"],
+                "output": example["output"]
+            }
+            f.write(json.dumps(data_to_save, ensure_ascii=False) + '\n')
+
 def main(args):
     logger = logging.getLogger("train")
     logger.propagate = False
@@ -48,7 +59,7 @@ def main(args):
     os.makedirs(args.output_dir, exist_ok=True)
     logger.info(f'[+] Save output to "{args.output_dir}"')
 
-    logger.info(" ====== Arguements ======")
+    logger.info(" ====== Arguments ======")
     for k, v in vars(args).items():
         logger.info(f"{k:25}: {v}")
 
@@ -72,24 +83,50 @@ def main(args):
         EarlyStoppingCallback
     )
 
-#     class ASLLoss(nn.Module):
-#         def __init__(self, gamma_positive=0, gamma_negative=4, eps: float = 0.1):
-#             super(ASLLoss, self).__init__()
+#     class FocalLoss(BCEWithLogitsLoss):
+#         def __init__(self, gamma=2.0, alpha=0.25, pos_weight=None, reduction='mean'):
+#             super().__init__(pos_weight=pos_weight, reduction=reduction)
+#             self.gamma = gamma
+#             self.alpha = alpha
 
-#             self.gamma_positive = gamma_positive
-#             self.gamma_negative = gamma_negative
-#             self.eps = eps
+#         def forward(self, input_, target):
+#             BCE_loss = super().forward(input_, target)
+#             pt = torch.exp(-BCE_loss)
+#             F_loss = self.alpha * (1-pt)**self.gamma * BCE_loss
 
-#         def forward(self, inputs, target):
-#             """Computes the Asymmetric Loss between `inputs` and `target`"""
+#             if self.reduction == 'mean':
+#                 return torch.mean(F_loss)
+#             elif self.reduction == 'sum':
+#                 return torch.sum(F_loss)
+#             else:
+#                 return F_loss
+    
+#     # Define trainer
+#     class CustomTrainer(Trainer):
+#         def __init__(self, *args, **kwargs):
+#             super().__init__(*args, **kwargs)
 
-#             positive = (target * (1 - (inputs+self.eps).clamp(max=1)).pow(self.gamma_positive))
-#             negative = ((1 - target) * (inputs+self.eps).pow(self.gamma_negative))
+#         def compute_loss(self, model, inputs, return_outputs=False):
+#             labels = inputs.pop("labels")
+#             outputs = model(**inputs)
+#             logits = outputs.logits
 
-#             loss = -(positive + negative).log().mean()
+#             loss_fct = FocalLoss(reduction='sum')
 
-#             return loss
+#             if len(labels.shape) > 1: # multi-label case
+#                 # print(logits.shape) # torch.Size([Batch, num_class])
+#                 # print(logits.view(-1).shape) # torch.Size([Batch * num_class])
+#                 # print(labels.shape) # torch.Size([Batch, num_class])
+#                 # print(labels.view(-1).shape) # torch.Size([Batch * num_class])
+#                 loss = loss_fct(logits.view(-1), labels.float().view(-1))
+                
+#             else: # single-label case
+#                 loss = loss_fct(logits.view(-1), labels.long().view(-1))
 
+#             return (loss, outputs) if return_outputs else loss 
+
+
+    # Reference: https://github.com/Alibaba-MIIL/ASL/blob/8c9e0bd8d5d450cf19093363fc08aa7244ad4408/src/loss_functions/losses.py#L5
     class ASLLoss(nn.Module):
         def __init__(self, gamma_pos=0, gamma_neg=4, eps: float = 0.1):
             super(ASLLoss, self).__init__()
@@ -108,52 +145,7 @@ def main(args):
             neg_part = (1 - target) * ((logit) ** self.gamma_neg) * torch.log(1 - logit + self.eps)
 
             return -(torch.sum(pos_part + neg_part)) / inputs.size()[0]
-
-
-    class FocalLoss(BCEWithLogitsLoss):
-        def __init__(self, gamma=2.0, alpha=0.25, pos_weight=None, reduction='mean'):
-            super().__init__(pos_weight=pos_weight, reduction=reduction)
-            self.gamma = gamma
-            self.alpha = alpha
-
-        def forward(self, input_, target):
-            BCE_loss = super().forward(input_, target)
-            pt = torch.exp(-BCE_loss)
-            F_loss = self.alpha * (1-pt)**self.gamma * BCE_loss
-
-            if self.reduction == 'mean':
-                return torch.mean(F_loss)
-            elif self.reduction == 'sum':
-                return torch.sum(F_loss)
-            else:
-                return F_loss
-
-    
-    # Define trainer
-    class CustomTrainer(Trainer):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-
-        def compute_loss(self, model, inputs, return_outputs=False):
-            labels = inputs.pop("labels")
-            outputs = model(**inputs)
-            logits = outputs.logits
-
-            loss_fct = FocalLoss(reduction='sum')
-
-            if len(labels.shape) > 1: # multi-label case
-                # print(logits.shape) # torch.Size([Batch, num_class])
-                # print(logits.view(-1).shape) # torch.Size([Batch * num_class])
-                # print(labels.shape) # torch.Size([Batch, num_class])
-                # print(labels.view(-1).shape) # torch.Size([Batch * num_class])
-                loss = loss_fct(logits.view(-1), labels.float().view(-1))
-                
-            else: # single-label case
-                loss = loss_fct(logits.view(-1), labels.long().view(-1))
-
-            return (loss, outputs) if return_outputs else loss 
-
-
+        
     class ASLCustomTrainer(Trainer):
         def __init__(self, model=None, args=None,
                      train_dataset=None,
@@ -170,24 +162,8 @@ def main(args):
                               tokenizer=tokenizer,**kwargs)
 
             # Instantiate the loss function 
-            # self.asl_loss_fn = ASLLoss(**asl_loss_config)
             self.loss_fct = ASLLoss(**asl_loss_config)
                 
-
-#         def compute_loss(self,model:nn.Module,batch, return_outputs=False):
-
-#             labels=batch['labels']
-#             inputs={key:val.reshape(val.shape[0],-1) for key,val in batch.items() if key != 'labels'}
-
-#             outputs=model(**inputs)
-
-#             logits=outputs.logits
-
-#             # Compute the Asymmetric Loss between logits and labels
-#             loss=self.asl_loss_fn(logits.float(),labels.float())
-
-#             return (loss, outputs) if return_outputs else loss 
-
         def compute_loss(self, model, inputs, return_outputs=False):
             labels = inputs.pop("labels")
             outputs = model(**inputs)
@@ -220,9 +196,13 @@ def main(args):
     url_pattern = re.compile(
         r'https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)')
 
-    def clean(x): 
-        x = pattern.sub(' ', x)
-        # x = emoji.replace_emoji(x, replace='') # emoji 삭제
+    def clean(x, removing_symbol, removing_emoji):
+        if removing_symbol == "yes":
+            x = pattern.sub(' ', x) # emoji 포함 특수문자 전부 삭제
+        else:
+            if removing_emoji == "yes":
+                x = emoji.replace_emoji(x, replace='') # emoji 삭제
+                
         x = url_pattern.sub('', x)
         x = x.strip()
         x = repeat_normalize(x, num_repeats=2)
@@ -240,9 +220,9 @@ def main(args):
                 text2 = text2.replace("&others&", "")
         if args.cleansing == "yes":
             if type(text1) is str:
-                text1 = clean(text1)
+                text1 = clean(text1, args.removing_symbol, args.removing_emoji)
             if type(text2) is str:
-                text2 = clean(text2)
+                text2 = clean(text2, args.removing_symbol, args.removing_emoji)
             
         # encode them
         encoding = tokenizer(text1, text2, padding="max_length", truncation=True, max_length=args.max_seq_len)
@@ -258,14 +238,14 @@ def main(args):
         return encoding
 
 
-    kfold = KFold(n_splits=args.num_folds, shuffle=True, random_state=args.seed)
-    
+    kfold = MultilabelStratifiedKFold(n_splits=args.num_folds, shuffle=True, random_state=args.seed)
+
     form = []
     output = []
-    
     for data in dataset:
         form.append(data["input"]["form"])
-        output.append(data["output"])
+        result_list = [1 if value == 'True' else 0 for value in data["output"].values()]
+        output.append(result_list)
         
     for fold, (train_idx, valid_idx) in enumerate(kfold.split(form, output)):
         logger.info(f"===== Fold {fold + 1}/{args.num_folds} =====")
@@ -273,6 +253,11 @@ def main(args):
         train_ds = dataset.select(train_idx)
         valid_ds = dataset.select(valid_idx)
 
+        # train 데이터셋 저장
+        save_dataset_to_jsonl(train_ds, f"resource/data/folded/train_dataset_fold{fold}.jsonl")
+        # valid 데이터셋 저장
+        save_dataset_to_jsonl(valid_ds, f"resource/data/folded/valid_dataset_fold{fold}.jsonl")
+        
         encoded_tds = train_ds.map(preprocess_data, remove_columns=train_ds.column_names)
         encoded_vds = valid_ds.map(preprocess_data, remove_columns=valid_ds.column_names)
 
@@ -326,9 +311,7 @@ def main(args):
             result = multi_label_metrics(predictions=preds, labels=p.label_ids)
             return result
 
-
         trainer = ASLCustomTrainer(
-        # trainer = CustomTrainer(
             model=model,
             args=targs,
             train_dataset=encoded_tds, # 학습데이터
@@ -338,72 +321,11 @@ def main(args):
             callbacks=[EarlyStoppingCallback(early_stopping_patience=args.patience)],
         )
         
-        # trainer = Trainer(
-        #     model,
-        #     targs,
-        #     train_dataset=encoded_tds,
-        #     eval_dataset=encoded_vds,
-        #     tokenizer=tokenizer,
-        #     compute_metrics=compute_metrics,
-        #     callbacks=[EarlyStoppingCallback(early_stopping_patience=args.patience)],
-        # )
-        
         trainer.train()
         
         with open(os.path.join(os.path.join(args.output_dir, f"fold_{fold}"), "label2id.json"), "w") as f:
             json.dump(label2id, f)
 # end main
-
-    
-# Reference: https://github.com/Alibaba-MIIL/ASL/blob/8c9e0bd8d5d450cf19093363fc08aa7244ad4408/src/loss_functions/losses.py#L107
-class ASLSingleLabel(nn.Module):
-    '''
-    This loss is intended for single-label classification problems
-    '''
-    def __init__(self, gamma_pos=0, gamma_neg=4, eps: float = 0.1, reduction='mean'):
-        super(ASLSingleLabel, self).__init__()
-
-        self.eps = eps
-        self.logsoftmax = nn.LogSoftmax(dim=-1)
-        self.targets_classes = []
-        self.gamma_pos = gamma_pos
-        self.gamma_neg = gamma_neg
-        self.reduction = reduction
-
-    def forward(self, inputs, target):
-        '''
-        "input" dimensions: - (batch_size,number_classes)
-        "target" dimensions: - (batch_size)
-        '''
-        
-        num_classes = inputs.size()[-1]
-        
-        log_preds = self.logsoftmax(inputs)
-        self.targets_classes = torch.zeros_like(inputs).scatter_(1, target.long().unsqueeze(1), 1)
-
-        # ASL weights
-        targets = self.targets_classes
-        anti_targets = 1 - targets
-        xs_pos = torch.exp(log_preds)
-        xs_neg = 1 - xs_pos
-        xs_pos = xs_pos * targets
-        xs_neg = xs_neg * anti_targets
-        asymmetric_w = torch.pow(1 - xs_pos - xs_neg,
-                                 self.gamma_pos * targets + self.gamma_neg * anti_targets)
-        log_preds = log_preds * asymmetric_w
-
-        if self.eps > 0:  # label smoothing
-            self.targets_classes = self.targets_classes.mul(1 - self.eps).add(self.eps / num_classes)
-
-        # loss calculation
-        loss = - self.targets_classes.mul(log_preds)
-
-        loss = loss.sum(dim=-1)
-        if self.reduction == 'mean':
-            loss = loss.mean()
-
-        return loss
-
 
 if __name__ == "__main__":
     exit(main(parser.parse_args()))

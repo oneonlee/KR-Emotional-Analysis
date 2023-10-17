@@ -106,39 +106,42 @@ pip install -r requirements.txt
 
 ```
 python3 -m run train \
-    --output-dir outputs/test/10folds_patience7_lr2-5_b64 \
-    --seed 42 --epoch 100 --patience 7 --num-folds 10 \
+    --output-dir outputs/beomi-KcELECTRA-base-v2022/removing_all-stratified_10folds-ES_patience5-ASL_Loss-lr2_5-b64 \
+    --seed 42 --epoch 50 --patience 5 --num-folds 10 \
     --learning-rate 2e-5 --weight-decay 0.1 \
     --max-seq-len 200 \
     --batch-size 64 --valid-batch-size 64 \
     --model-path beomi/KcELECTRA-base-v2022 \
     --tokenizer beomi/KcELECTRA-base-v2022 \
-    --removing-others yes --cleansing yes \
-    --gpu-num 5
-```
-```
-python3 -m run train-ASL \
-    --output-dir outputs/test-ASL/10folds_patience5_lr2-5_b64 \
-    --seed 42 --epoch 100 --patience 5 --num-folds 10 \
-    --learning-rate 2e-5 --weight-decay 0.1 \
-    --max-seq-len 200 \
-    --batch-size 64 --valid-batch-size 64 \
-    --model-path beomi/KcELECTRA-base-v2022 \
-    --tokenizer beomi/KcELECTRA-base-v2022 \
-    --removing-others yes --cleansing yes \
-    --gpu-num 1
-```
-```
-python3 -m run train-ASL2 \
-    --output-dir outputs/test-ASL2/10folds_patience5_lr2-5_b64 \
-    --seed 42 --epoch 100 --patience 5 --num-folds 10 \
-    --learning-rate 2e-5 --weight-decay 0.1 \
-    --max-seq-len 200 \
-    --batch-size 64 --valid-batch-size 64 \
-    --model-path beomi/KcELECTRA-base-v2022 \
-    --tokenizer beomi/KcELECTRA-base-v2022 \
+    --removing-symbol yes --removing-emoji yes \
     --removing-others yes --cleansing yes \
     --gpu-num 4
+```
+```
+python3 -m run train \
+    --output-dir outputs/beomi-KcELECTRA-base-v2022/removing_emoji-stratified_10folds-ES_patience5-ASL_Loss-lr2_5-b64 \
+    --seed 42 --epoch 50 --patience 5 --num-folds 10 \
+    --learning-rate 2e-5 --weight-decay 0.1 \
+    --max-seq-len 200 \
+    --batch-size 64 --valid-batch-size 64 \
+    --model-path beomi/KcELECTRA-base-v2022 \
+    --tokenizer beomi/KcELECTRA-base-v2022 \
+    --removing-symbol no --removing-emoji yes \
+    --removing-others yes --cleansing yes \
+    --gpu-num 2
+```
+```
+python3 -m run train \
+    --output-dir outputs/beomi-KcELECTRA-base-v2022/removing_nothing-stratified_10folds-ES_patience5-ASL_Loss-lr2_5-b64 \
+    --seed 42 --epoch 50 --patience 5 --num-folds 10 \
+    --learning-rate 2e-5 --weight-decay 0.1 \
+    --max-seq-len 200 \
+    --batch-size 64 --valid-batch-size 64 \
+    --model-path beomi/KcELECTRA-base-v2022 \
+    --tokenizer beomi/KcELECTRA-base-v2022 \
+    --removing-symbol no --removing-emoji no \
+    --removing-others yes --cleansing yes \
+    --gpu-num 0
 ```
 
 ### Inference
@@ -184,14 +187,13 @@ python3 -m run inference \
 
 ```
 python3 -m run inference \
-    --model-ckpt-path outputs/test-ASL2/10folds_patience5_lr2-5_b64/fold_9/checkpoint-13222 \
-    --output-path outputs/test-ASL2/10folds_patience5_lr2-5_b64/fold_9-test_output.jsonl \
+    --model-ckpt-path outputs/beomi-KcELECTRA-base-v2022/removing_emoji-stratified_10folds-ES_patience5-ASL_Loss-lr2_5-b64/fold_8/e8 \
+    --output-path outputs/beomi-KcELECTRA-base-v2022/removing_emoji-stratified_10folds-ES_patience5-ASL_Loss-lr2_5-b64/fold_8-test_output.jsonl \
     --max-seq-len 200 \
     --batch-size 128 \
     --removing-others yes --cleansing yes \
-    --device cuda:0
+    --device cuda:3
 ```
-
 
 ## Reference
 - 국립국어원 모두의말뭉치 (https://corpus.korean.go.kr/)  
