@@ -1,12 +1,18 @@
 # Created by https://www.toptal.com/developers/gitignore/api/linux,jupyternotebooks,python
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,jupyternotebooks,python
 
-output*/
+outputs/
+!outputs/.gitkeep
 
 ### Data ###
 resource/data/nikluge-ea-2023-train.jsonl
 resource/data/nikluge-ea-2023-dev.jsonl
+resource/data/nikluge-ea-2023-train+dev.jsonl
 resource/data/nikluge-ea-2023-test.jsonl
+resource/data/new_dataset.pt
+resource/data/preprocessed-nikluge-ea-2023.txt
+resource/data/folded/
+!resource/data/folded/.gitkeep
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks
