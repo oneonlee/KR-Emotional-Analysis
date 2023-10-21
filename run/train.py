@@ -271,6 +271,12 @@ def main(args):
         )
         model.to(device)
 
+        if tokenizer.pad_token is None:
+            tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+            model.resize_token_embeddings(num_added_token + tokenizer.vocab_size + 1)
+        if model.config.pad_token_id is None:
+            model.config.pad_token_id = model.config.eos_token_id
+    
         targs = TrainingArguments(
             output_dir=os.path.join(args.output_dir, f"fold_{fold}"),
             evaluation_strategy="epoch",

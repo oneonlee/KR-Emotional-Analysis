@@ -11,6 +11,8 @@ _, command, *arguments = sys.argv
 
 if command == "train":
     from .train import main, parser
+elif command == "train_ko":
+    from .train_ko import main, parser
 elif command == "inference":
     from .inference import main, parser
 elif command == "scoring":
