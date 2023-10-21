@@ -44,9 +44,14 @@
 ```
 resource
 └── data
+    ├── nikluge-ea-2023-train.jsonl
+    ├── nikluge-ea-2023-dev.jsonl
+    └── nikluge-ea-2023-test.jsonl
 
 # Executable python script
 run
+├── EDA.ipynb
+├── ensemble.ipynb
 ├── infernece.py
 └── train.py
 
